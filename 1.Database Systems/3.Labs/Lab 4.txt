@@ -1,0 +1,73 @@
+1. a) alter type stocks_t
+		add member function yield return float
+		cascade;
+	
+	create or replace type body stocks_t as
+	member function yield return float is
+	begin
+		return ((self.lastDivident/self.currentPrice)* 100);
+	end;
+	end;
+
+	select s.companyName, s.yield()
+	from stocks s
+
+   b) alter type stocks_t
+		add member function AUDtoUSD(rate float) return float
+		cascade;
+	
+	create or replace type body stocks_t as
+	member function AUDtoUSD(rate float) return float is
+	begin
+		return self.currentPrice * rate;
+	end;
+	end;
+
+	select s.companyName, AUDtoUSD(4.5)
+	from stocks s
+
+//create both at once
+create or replace type body stocks_t as 
+member function yeild return float is
+begin
+	return ((self.lastDivident/self.currentPrice)* 100);
+end yeild;
+member function AUDtoUSD(rate float) return float is
+begin
+	return self.currentPrice * rate;
+end AUDtoUSD;
+end;
+/
+
+  c)
+	alter type stocks_t
+	member function no_of_trades return integer
+	cascade;
+
+	create or replace type body stocks_t as
+	member function no_of_trades return integer is
+	countt integer
+	begin
+		select count(e.COLUMN_VALUE) into countt
+		from table(self.exchangesTrade) e
+		return countt;
+	end;
+	end;
+/
+
+   d) 
+	alter type client_t
+	member function total_purchase return float 
+	cascade;
+
+	create or replace type body client_t as 
+	member function total_purchase return float is
+	pValue float
+	begin
+		select (i.purchasePrice * i.qty) into pValue
+		from table(investment) i
+		return pValue;
+	end;
+	end;
+
+

@@ -1,0 +1,144 @@
+1.
+
+CREATE TYPE dept_t;
+
+/
+
+create type emp_t as object 
+(
+empNo char(6),
+firstName varchar(12),
+lastName varchar(15),
+workdept ref dept_t,
+sex char(1),
+birthdate DATE,
+salary Number(8,2)
+
+)
+/
+
+create type dept_t as object 
+(
+deptNo char(3),
+deptName varchar(36),
+mgrNo ref emp_t,
+admrDept ref dept_t
+)
+/
+--------------------------------------------
+
+create table OREMP of emp_t
+(
+constraint oremp_pk primary key(empNo),
+constraint oremp_firstName firstName not null,
+constraint oremp_lastName lastName not null,
+constraint oremp_sex_check  CHECK (SEX = 'M' OR SEX = 'F' OR SEX = 'm' OR SEX = 'f'),
+)
+
+create table ORDEPT of dept_t
+(
+constraint ordept_pk primary key(deptNo),
+constraint ordept_deptname deptName not null
+constraint ordept_MGRNO_fk foriegn key(mgrNo) references oremp
+constraint ordept_admrDept_fk foreign key(admrDept) references ordept
+)
+/
+
+ALTER TABLE oremp
+add constraint oremp_fk foreign key(workdept) references ordept
+/
+
+insert into ORDEPT values(dept_t('A00','SPIFFY COMPUTER SERVICE DIV.',NULL,(SELECT REF(d) FROM ORDEPT d WHERE d.DEPTNO = 'A00')))
+/
+insert into ORDEPT values(dept_t('B01','PLANNING',NULL,(SELECT REF(d) FROM ORDEPT d WHERE d.DEPTNO = 'A00')))
+/
+insert into ORDEPT values(dept_t('C01','INFORMATION CENTER',NULL,(SELECT REF(d) FROM ORDEPT d WHERE d.DEPTNO = 'A00')))
+/
+insert into ORDEPT values(dept_t('D01','DEVELOPMENT CENTRE',NULL,(SELECT REF(d) FROM ORDEPT d WHERE d.DEPTNO = 'C01')))
+/
+
+insert into OREMP values(emp_t('000010','CHRISTINE','HAAS',(select ref(d) from ordept d where d.deptNo='A00'),'F','14/AUG/53',72750))
+ /
+insert into OREMP values(emp_t('000020','MICHAEL','THOMPSON',(select ref(d) from ordept d where d.deptNo='B01'),'M','02/FEB/68',61250))
+ /
+insert into OREMP values(emp_t('000030','SALLY','KWAN',(select ref(d) from ordept d where d.deptNo='C01'),'F','11/MAY/71',58250))
+ /
+insert into OREMP values(emp_t('000060','IRVING','STERN',(select ref(d) from ordept d where d.deptNo='D01'),'M','07/JUL/65',55555))
+ /
+insert into OREMP values(emp_t('000070','EVA','PULASKI',(select ref(d) from ordept d where d.deptNo='D01'),'F','26/MAY/73',56170))
+ /
+insert into OREMP values(emp_t('000050','JOHN','GEYER',(select ref(d) from ordept d where d.deptNo='C01'),'M','15/SEP/55',60175))
+ /
+insert into OREMP values(emp_t('000090','EILEEN','HENDERSON',(select ref(d) from ordept d where d.deptNo='B01'),'F','15/MAY/61',49750))
+ /
+insert into OREMP values(emp_t('000100','THEODORE','SPENSER',(select ref(d) from ordept d where d.deptNo='B01'),'M','18/DEC/76',46150))
+ /
+
+
+
+ 
+update ordept
+set mgrNo = (select ref(e) from oremp e where e.empNo='000010')
+where deptNo = 'A00'
+/
+
+update ordept
+set mgrNo = (select ref(e) from oremp e where e.empNo='000020')
+where deptNo='B01'
+/
+
+update ordept
+set mgrNo = (select ref(e) from oremp e where e.empNo='000030')
+where deptNo ='C01'
+/
+
+update ordept
+set mgrNo = (select ref(e) from oremp e where e.empNo='000060')
+where deptNo ='D01'
+/
+
+2.
+(a)
+select d.deptName, e.lastName
+from ordept d join oremp e on d.mgrno.empNo = e.empNo
+/
+
+select d.deptName, d.mgrNo.lastname
+from ordept d
+/
+
+(b)
+select e.empNo, e.lastName, d.deptName
+from ordept d join oremp e on e.workdept.deptNo = d.deptNo
+
+below can only get managers details
+select d.mgrNo.empNo, d.mgrNo.lastname, d.deptName
+from ordept d
+
+(c)
+select d.deptNo, d.deptName, d.admrdept.deptName
+from ordept d
+
+(d)
+select d.deptNo, d.deptName, d.admrdept.deptName as admin, d.admrdept.mgrNo.lastname
+from ordept d
+
+(e)
+select e.empNo, e.firstName, e.lastName, e.salary, e.workdept.mgrNo.lastName as mgrLast, e.workdept.mgrNo.salary as mgrSal
+from oremp e
+
+select e.empNo, e.firstName, e.lastName, e.salary, e.workdept.deptNo as dept
+from oremp e
+
+(f)
+select d.deptNo, d.deptName, AVG(CASE WHEN e.SEX = 'M' THEN e.SALARY END) AS  "AVG MEN", AVG(CASE WHEN e.SEX = 'F' THEN e.SALARY END) AS "AVG WOMEN"
+from ordept d join oremp e on d.deptNo = e.workdept.deptNo  
+group by d.deptNo, d.deptName
+
+
+
+
+
+
+
+

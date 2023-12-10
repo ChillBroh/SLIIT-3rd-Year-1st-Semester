@@ -1,0 +1,211 @@
+create type exchanges_arr as varray(3) of varchar(40)
+/
+
+create type stocks_t as object(
+companyName varchar(10),
+currentPrice number(6,2),
+exchangesTrade exchanges_arr,
+lastDivident number(4,2),
+EPR number(4,2)
+)
+/
+
+create type address_t as object(
+streetNumber number,
+streetName char(30),
+suburb char(15),
+state char(5),
+pin char(10)
+)
+/
+
+create table stocks of stocks_t(
+constraint stocks_pk primary key (companyName)
+)
+/
+---------------------------------------------------------------------------------------------
+create type investment_t as object(
+company ref stocks_t,
+purchasePrice number(4,2),
+day date,
+qty number(7)
+)
+
+
+create investment_nested as table of investment_t
+/
+
+create type client_t as object(
+name varchar(40),
+address address_t,
+investment investment_nested
+)
+/
+
+create table clients of client_t(
+constraint client_pk2 primary key(name)
+)
+nested table investment store as investment_tab
+/
+-------------------------------------------------------------------------------------------
+insert into stocks values (stocks_t('BHP',10.50,exchanges_arr('Sydney','New York'),1.50,3.20))
+/
+insert into stocks values (stocks_t('IBM',70.00,exchanges_arr('New York','London','Tokyo'),4.25,10.00))
+/
+insert into stocks values('INTEL' , 76.50 , exchanges_arr('New york','London') , 5.00 , 12.40)
+/
+insert into stocks values('FORD' , 40.00 , exchanges_arr( 'New York') , 2.00 , 8.50)
+/
+insert into stocks values('GM' , 60.00 , exchanges_arr( 'New York') , 2.50 , 9.20)
+/
+insert into stocks values('INFOSYS' ,45.00 , exchanges_arr( 'New York') , 3.00 , 7.80)
+/
+
+
+---------------------------------------------------------------------------------------------
+
+insert into clients
+values (
+	client_t('John Smith',
+			address_t(
+				3, 
+                   'East Av',
+				'Bentley', 
+				'WA', 
+				'6102'
+			),
+		    investment_nested(
+				     investment_t(
+					     (select ref(s) from stocks s where s.companyName = 'BHP'),
+					     12.00,
+					     '02-OCTOBER-01',
+					     1000
+					 ),
+				      investment_t	(
+					      (select ref(s) from stocks s where s.companyName = 'BHP'),
+					      10.50,
+				           '08-JUNE-02',
+                               2000
+					  ),
+				       investment_t(
+					       (select ref(s) from stocks s where s.companyName = 'IBM'),
+					       58.00,
+					       '12-FEBRUARY-00',
+					       500
+					  ),
+					  investment_t(
+						   (select ref(s) from stocks s where s.companyName = 'IBM'),
+						   65.00,
+                                '10-APRIL-01',
+                                1200
+                          ),
+					  investment_t(
+						   (select ref(s) from stocks s where s.companyName = 'INFOSYS'),
+						   64.00,
+                                '11-AUGUST-01',
+                                1000
+                           )
+		       )
+	  )
+);
+
+
+insert into clients
+values (
+	client_t('Jill Brody',
+			address_t(
+				42, 
+                   'Bent St',
+				'Perth', 
+				'WA', 
+				'6001'
+			),
+		    investment_nested(
+				     investment_t(
+					     (select ref(s) from stocks s where s.companyName = 'INTEL'),
+					     35.00,
+					     '30-JANUARY-00',
+					     300
+					 ),
+				      investment_t	(
+					      (select ref(s) from stocks s where s.companyName = 'INTEL'),
+					      54.00,
+				           '30-JANUARY-01',
+                               400
+					  ),
+				       investment_t(
+					       (select ref(s) from stocks s where s.companyName = 'INTEL'),
+					       60.00,
+					       '02-OCTOBER-01',
+					       200
+					  ),
+					  investment_t(
+						   (select ref(s) from stocks s where s.companyName = 'FORD'),
+						   40.00,
+                                '05-OCTOBER-99',
+                                300
+                          ),
+					  investment_t(
+						   (select ref(s) from stocks s where s.companyName = 'GM'),
+						   55.50,
+                                '12-DECEMBER-00',
+                                500
+                           )
+		       )
+	  )
+);
+
+-----------------------------------------------------------------------------------------------
+SET LINESIZE 200
+SET PAGESIZE 100
+COLUMN name FORMAT A20
+COLUMN companyname FORMAT A20
+COLUMN currentprice FORMAT 999.99
+COLUMN lastdivident FORMAT 999.99
+COLUMN epr FORMAT 999.99
+
+a) 
+select c.name, i.company.companyName, i.company.currentPrice, i.company.lastDivident, i.company.EPR
+from clients c, table(c.investment) i 
+
+b)
+select c.name, i.company.companyName, sum(i.qty) as totalQty, sum(i.qty * i.purchasePrice)/ sum(i.qty)
+from clients c , table(c.investment) i 
+group by c.name, i.company.companyName
+
+c)
+select c.name, i.company.companyName, sum(i.qty),sum(i.qty * i.company.currentPrice)
+from clients c , table(c.investment) i, table(i.company.exchangesTrade) e
+where e.COLUMN_VALUE = 'New York'
+group by c.name, i.company.companyName
+
+
+d)
+select c.name, sum(i.qty * i.company.currentPrice)
+from clients c, table(c.investment)
+group by c.name
+
+below one is correct
+
+SELECT c.name,i.company.companyName, SUM(i.qty * i.company.currentPrice) AS total_investment_value
+FROM clients c
+JOIN TABLE(c.investment) i ON 1=1
+GROUP BY c.name, i.company.companyName
+
+e)
+
+SELECT
+    c.name,
+    SUM(i.qty * i.company.currentPrice) AS total_value,
+    SUM(i.qty * i.purchasePrice) AS total_cost,
+    SUM(i.qty * i.company.currentPrice) - SUM(i.qty * i.purchasePrice) AS book_profit_or_loss
+FROM clients c
+JOIN TABLE(c.investment) i ON 1=1
+GROUP BY c.name;
+
+
+
+
+
+
+
